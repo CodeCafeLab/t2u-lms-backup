@@ -1,0 +1,601 @@
+{% extends "templates/web.html" %}
+
+{% block title %}My Earnings — T2U Platform{% endblock %}
+
+{% block page_content %}
+<style>
+  .t2u-wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 60px; }
+  .t2u-hdr  { margin-bottom: 28px; }
+  .t2u-hdr h1 { font-size: 1.7rem; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .t2u-hdr p  { color: #6b7280; }
+
+  /* KYC warning bar */
+  .kyc-bar { background:#fffbeb; border:1px solid #fcd34d; border-radius:10px;
+    padding:14px 20px; display:flex; align-items:center; justify-content:space-between;
+    gap:12px; margin-bottom:24px; }
+  .kyc-bar-text { color:#92400e; font-weight:600; font-size:0.9rem; }
+  .kyc-bar-link { background:#f59e0b; color:#fff; padding:7px 18px; border-radius:6px;
+    font-size:0.82rem; font-weight:600; text-decoration:none; white-space:nowrap; }
+  .kyc-bar-link:hover { background:#d97706; }
+
+  /* Summary cards */
+  .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+  @media(max-width:640px){ .summary-grid { grid-template-columns:1fr 1fr; } }
+  @media(max-width:400px){ .summary-grid { grid-template-columns:1fr; } }
+
+  .sum-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px 18px; }
+  .sum-card .label { font-size:0.78rem; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; }
+  .sum-card .amount { font-size:1.55rem; font-weight:800; color:#1a1a2e; margin-top:4px; }
+  .sum-card.total  .amount { color:#7c3aed; }
+  .sum-card.avail  .amount { color:#16a34a; }
+  .sum-card.wdraw  .amount { color:#374151; }
+
+  /* Section heading */
+  .sec-hdr { font-size:1rem; font-weight:700; color:#374151; margin:28px 0 14px; }
+
+  /* Income stream cards */
+  .income-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:8px; }
+  @media(max-width:640px){ .income-grid { grid-template-columns:1fr; } }
+
+  .inc-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px; }
+  .inc-card .inc-label { font-size:0.78rem; font-weight:600; color:#6b7280; text-transform:uppercase; margin-bottom:4px; }
+  .inc-card .inc-amount { font-size:1.4rem; font-weight:800; color:#1a1a2e; margin-bottom:8px; }
+  .inc-card .inc-sub { font-size:0.76rem; color:#6b7280; line-height:1.6; }
+  .inc-card .inc-sub span { display:block; }
+
+  /* Milestones */
+  .milestone-list { display:flex; flex-direction:column; gap:12px; }
+  .ms-row {
+    background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+    padding:14px 18px; transition:border .2s;
+  }
+  .ms-row.achieved { border-color:#86efac; background:#f0fdf4; }
+  .ms-row.next-up  { border-color:#7c3aed; }
+  .ms-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+  .ms-title { font-weight:600; color:#1a1a2e; font-size:0.92rem; }
+  .ms-cash  { font-size:0.78rem; color:#6b7280; margin-top:2px; }
+  .ms-badge-achieved { background:#dcfce7; color:#166534; padding:3px 10px; border-radius:20px;
+    font-size:0.75rem; font-weight:700; }
+  .ms-pct { font-size:0.78rem; color:#7c3aed; font-weight:600; }
+  .ms-bar-wrap { height:6px; background:#e5e7eb; border-radius:4px; overflow:hidden; }
+  .ms-bar-fill { height:100%; border-radius:4px; transition:width .6s ease; }
+  .ms-row.achieved .ms-bar-fill { background:#22c55e; }
+  .ms-row:not(.achieved) .ms-bar-fill { background:#7c3aed; }
+
+  /* Withdrawal */
+  .wd-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:24px; }
+  .wd-input-row { display:flex; gap:12px; align-items:flex-end; }
+  @media(max-width:480px){ .wd-input-row { flex-direction:column; } }
+  .wd-input-wrap { flex:1; }
+  .wd-input-wrap label { display:block; font-weight:600; font-size:0.83rem; color:#374151; margin-bottom:5px; }
+  .wd-input-wrap input { width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;
+    font-size:1rem; font-weight:600; outline:none; box-sizing:border-box; }
+  .wd-input-wrap input:focus { border-color:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.1); }
+  .wd-bank-info { margin-top:12px; padding:10px 14px; background:#f9fafb; border-radius:8px;
+    font-size:0.8rem; color:#6b7280; line-height:1.6; }
+  .wd-bank-info strong { color:#374151; }
+
+  /* Admin panel */
+  .admin-panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; margin-top:8px; }
+  .admin-panel-hdr { padding:14px 20px; background:#f3f4f6; cursor:pointer; display:flex;
+    justify-content:space-between; align-items:center; font-weight:700; color:#374151; user-select:none; }
+  .admin-panel-body { padding:20px; display:none; }
+  .admin-panel-body.open { display:block; }
+  .admin-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media(max-width:480px){ .admin-form-grid { grid-template-columns:1fr; } }
+  .admin-field label { display:block; font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:4px; }
+  .admin-field input, .admin-field select, .admin-field textarea {
+    width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px;
+    font-size:0.9rem; outline:none; box-sizing:border-box;
+  }
+  .admin-field textarea { resize:vertical; min-height:60px; }
+
+  /* History table */
+  .hist-table { width:100%; border-collapse:collapse; font-size:0.84rem; }
+  .hist-table th { background:#f9fafb; padding:10px 14px; text-align:left; font-weight:600;
+    color:#374151; border-bottom:1px solid #e5e7eb; }
+  .hist-table td { padding:10px 14px; border-bottom:1px solid #f3f4f6; color:#374151; }
+  .hist-table tr:last-child td { border-bottom:none; }
+  .pill { padding:3px 10px; border-radius:20px; font-size:0.72rem; font-weight:700; }
+  .pill-green  { background:#dcfce7; color:#166534; }
+  .pill-yellow { background:#fef9c3; color:#854d0e; }
+  .pill-gray   { background:#f3f4f6; color:#6b7280; }
+
+  .table-wrap { overflow-x:auto; }
+
+  /* Buttons */
+  .btn-t2u { display:inline-block; padding:10px 24px; border-radius:8px; font-weight:600;
+    font-size:0.88rem; cursor:pointer; border:none; transition:all .2s; }
+  .btn-primary   { background:#7c3aed; color:#fff; }
+  .btn-primary:hover   { background:#6d28d9; }
+  .btn-secondary { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+  .btn-secondary:hover { background:#e5e7eb; }
+  .btn-load { display:block; width:100%; margin-top:14px; text-align:center;
+    background:#f3f4f6; border:1px solid #d1d5db; color:#374151; padding:9px;
+    border-radius:8px; font-weight:600; cursor:pointer; font-size:0.85rem; }
+  .btn-load:hover { background:#e5e7eb; }
+
+  /* Loading skeleton */
+  .skel { background:#f3f4f6; border-radius:8px; animation:pulse 1.4s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+  .skel-h { height:20px; margin-bottom:10px; }
+
+  /* Retry */
+  .retry-box { text-align:center; padding:48px 20px; }
+  .retry-box p { color:#6b7280; margin-bottom:16px; }
+
+  .hidden { display:none !important; }
+</style>
+
+<div class="t2u-wrap">
+  <!-- Loading skeleton -->
+  <div id="e-loading">
+    <div class="t2u-hdr">
+      <div class="skel skel-h" style="width:220px;height:30px;"></div>
+      <div class="skel skel-h" style="width:340px;margin-top:8px;"></div>
+    </div>
+    <div class="summary-grid">
+      <div class="skel" style="height:80px;"></div>
+      <div class="skel" style="height:80px;"></div>
+      <div class="skel" style="height:80px;"></div>
+    </div>
+    <div class="skel" style="height:200px;margin-bottom:20px;"></div>
+    <div class="skel" style="height:160px;"></div>
+  </div>
+
+  <!-- Error / retry -->
+  <div id="e-error" class="hidden retry-box">
+    <p>Could not load your earnings data. Please try again.</p>
+    <button class="btn-t2u btn-primary" onclick="loadDashboard()">Retry</button>
+  </div>
+
+  <!-- Dashboard content -->
+  <div id="e-content" class="hidden">
+
+    <!-- KYC warning bar -->
+    <div id="kyc-bar" class="kyc-bar hidden">
+      <span class="kyc-bar-text">⚠ Your KYC is not complete. Complete KYC to enable withdrawals.</span>
+      <a href="/kyc" class="kyc-bar-link">Complete KYC →</a>
+    </div>
+
+    <div class="t2u-hdr">
+      <h1>My Earnings</h1>
+      <p>All your income streams, milestones, and withdrawals in one place.</p>
+    </div>
+
+    <!-- Section A: Summary -->
+    <div class="summary-grid">
+      <div class="sum-card total">
+        <div class="label">Total Earned</div>
+        <div class="amount" id="s-total">₹0</div>
+      </div>
+      <div class="sum-card avail">
+        <div class="label">Available Balance</div>
+        <div class="amount" id="s-avail">₹0</div>
+      </div>
+      <div class="sum-card wdraw">
+        <div class="label">Withdrawn</div>
+        <div class="amount" id="s-wdraw">₹0</div>
+      </div>
+    </div>
+
+    <!-- Section B: Income Streams -->
+    <div class="sec-hdr">Income Streams</div>
+    <div class="income-grid">
+      <div class="inc-card">
+        <div class="inc-label">Direct Sponsor Income</div>
+        <div class="inc-amount" id="ic-direct">₹0</div>
+        <div class="inc-sub"><span id="ic-direct-sub"></span></div>
+      </div>
+      <div class="inc-card">
+        <div class="inc-label">Generation Income</div>
+        <div class="inc-amount" id="ic-gen">₹0</div>
+        <div class="inc-sub">
+          <span id="ic-gen-sub1"></span>
+          <span id="ic-gen-sub2"></span>
+        </div>
+      </div>
+      <div class="inc-card">
+        <div class="inc-label">Binary Matching Bonus</div>
+        <div class="inc-amount" id="ic-binary">₹0</div>
+        <div class="inc-sub">
+          <span id="ic-bin-sub1"></span>
+          <span id="ic-bin-sub2"></span>
+          <span id="ic-bin-sub3"></span>
+          <span id="ic-bin-sub4"></span>
+        </div>
+      </div>
+      <div class="inc-card">
+        <div class="inc-label">Leadership + Royalty</div>
+        <div class="inc-amount" id="ic-lr">₹0</div>
+        <div class="inc-sub"><span id="ic-lr-sub"></span></div>
+      </div>
+    </div>
+
+    <!-- Section C: Milestones -->
+    <div class="sec-hdr">Reward Milestones</div>
+    <div class="milestone-list" id="milestone-list">
+      <p style="color:#6b7280;font-size:0.88rem;">No milestones configured yet.</p>
+    </div>
+
+    <!-- Section D: Withdrawal -->
+    <div class="sec-hdr">Request Withdrawal</div>
+    <div class="wd-card">
+      <div class="wd-input-row">
+        <div class="wd-input-wrap">
+          <label>Amount (₹)</label>
+          <input type="number" id="wd-amount" placeholder="Enter amount" min="1" />
+        </div>
+        <button class="btn-t2u btn-primary" onclick="requestWithdrawal()">Request Withdrawal</button>
+      </div>
+      <div class="wd-bank-info" id="wd-bank-info" style="display:none;"></div>
+    </div>
+
+    <!-- Section E: Admin Manual Credit (System Manager only) -->
+    <div id="admin-section" class="hidden">
+      <div class="sec-hdr">Admin Tools</div>
+      <div class="admin-panel">
+        <div class="admin-panel-hdr" onclick="toggleAdmin()">
+          Admin: Manual Commission Credit <span id="admin-toggle-icon">▼</span>
+        </div>
+        <div class="admin-panel-body" id="admin-panel-body">
+          <div class="admin-form-grid">
+            <div class="admin-field">
+              <label>User</label>
+              <select id="admin-user"></select>
+            </div>
+            <div class="admin-field">
+              <label>Amount (₹)</label>
+              <input type="number" id="admin-amount" min="0.01" placeholder="0.00" />
+            </div>
+            <div class="admin-field">
+              <label>Income Type</label>
+              <select id="admin-income-type">
+                <option>Direct Sponsor</option>
+                <option>Generation L2</option>
+                <option>Generation L3</option>
+                <option>Binary Matching</option>
+                <option>Leadership</option>
+                <option>Royalty</option>
+                <option>Manual Credit</option>
+              </select>
+            </div>
+            <div class="admin-field">
+              <label>Remarks</label>
+              <textarea id="admin-remarks" placeholder="Optional remarks"></textarea>
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <button class="btn-t2u btn-primary" onclick="submitManualCredit()">Credit Commission</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section F: History -->
+    <div class="sec-hdr">Commission History</div>
+    <div class="table-wrap">
+      <table class="hist-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Source</th>
+            <th>Package</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="hist-body">
+          <tr><td colspan="6" style="color:#6b7280;text-align:center;padding:20px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="load-more-wrap">
+      <button class="btn-load" id="load-more-btn" onclick="loadMoreHistory()">Load More</button>
+    </div>
+
+  </div><!-- /#e-content -->
+</div>
+
+<script>
+(function () {
+  var dashData = null;
+  var histOffset = 0;
+  var histTotal  = 0;
+  var HIST_LIMIT = 20;
+
+  function inr(v) {
+    v = parseFloat(v) || 0;
+    return "₹" + v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function txt(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  function showEl(id)  { var el = document.getElementById(id); if (el) el.classList.remove("hidden"); }
+  function hideEl(id)  { var el = document.getElementById(id); if (el) el.classList.add("hidden"); }
+
+  function isSystemManager() {
+    try {
+      var roles = frappe.boot && frappe.boot.user && frappe.boot.user.roles;
+      if (!roles) return false;
+      return roles.indexOf("System Manager") !== -1;
+    } catch(e) { return false; }
+  }
+
+  window.loadDashboard = function() {
+    hideEl("e-error");
+    hideEl("e-content");
+    showEl("e-loading");
+
+    frappe.call({
+      method: "t2u_platform.api.earnings.get_earnings_dashboard",
+      callback: function(r) {
+        hideEl("e-loading");
+        if (!r || !r.message) { showEl("e-error"); return; }
+        dashData = r.message;
+        renderDashboard(dashData);
+        showEl("e-content");
+        loadHistory(true);
+        if (isSystemManager()) {
+          showEl("admin-section");
+          loadAdminUsers();
+        }
+      },
+      error: function() {
+        hideEl("e-loading");
+        showEl("e-error");
+      }
+    });
+  };
+
+  function renderDashboard(d) {
+    var s = d.summary || {};
+    txt("s-total", inr(s.total_earned));
+    txt("s-avail", inr(s.available_balance));
+    txt("s-wdraw", inr(s.withdrawn_amount));
+
+    var ib = d.income_breakup || {};
+    var bv = d.bv_ledger     || {};
+    var st = d.settings      || {};
+    var wi = d.withdrawal_info || {};
+
+    if (wi.kyc_status !== "Verified") { showEl("kyc-bar"); }
+
+    var direct = ib["Direct Sponsor"] || {};
+    txt("ic-direct", inr(direct.total || 0));
+    txt("ic-direct-sub", (direct.count || 0) + " referrals");
+
+    var l2 = ib["Generation L2"] || {};
+    var l3 = ib["Generation L3"] || {};
+    txt("ic-gen", inr((l2.total || 0) + (l3.total || 0)));
+    txt("ic-gen-sub1", "L2: " + inr(l2.total || 0) + " (" + (l2.count || 0) + ")  ·  L3: " + inr(l3.total || 0) + " (" + (l3.count || 0) + ")");
+    txt("ic-gen-sub2", "L2 earns " + (st.generation_l2_percent || 0) + "%  ·  L3 earns " + (st.generation_l3_percent || 0) + "%");
+
+    var bin = ib["Binary Matching"] || {};
+    txt("ic-binary", inr(bin.total || 0));
+    txt("ic-bin-sub1", "Left BV: " + (bv.left_bv_total || 0) + "  |  Right BV: " + (bv.right_bv_total || 0));
+    txt("ic-bin-sub2", "Total Pairs: " + (bv.total_pairs || 0));
+    txt("ic-bin-sub3", "Today: " + inr(bv.daily_earnings_today || 0) + " / " + inr(bv.daily_cap || 0) + " cap  ·  " + inr(bv.daily_remaining || 0) + " remaining");
+    txt("ic-bin-sub4", inr(st.binary_reward_per_pair || 0) + " per " + (st.binary_pair_bv || 0) + " BV matched");
+
+    var lead  = ib["Leadership"] || {};
+    var royal = ib["Royalty"]    || {};
+    txt("ic-lr", inr((lead.total || 0) + (royal.total || 0)));
+    txt("ic-lr-sub", "Royalty Club requires " + (st.royalty_club_pairs || 0) + " pairs");
+
+    renderMilestones(d.milestones || []);
+
+    if (wi.bank_account_number) {
+      var bankEl = document.getElementById("wd-bank-info");
+      if (bankEl) {
+        bankEl.innerHTML = "Withdrawal will be sent to: <strong>" + wi.bank_name + "</strong>" +
+          " · A/C <strong>" + wi.bank_account_number + "</strong>" +
+          " · IFSC <strong>" + wi.ifsc_code + "</strong>" +
+          "<br><small>(from your KYC-verified bank details)</small>";
+        bankEl.style.display = "block";
+      }
+    }
+  }
+
+  function renderMilestones(milestones) {
+    var container = document.getElementById("milestone-list");
+    if (!container) return;
+    if (!milestones || milestones.length === 0) {
+      container.innerHTML = "<p style='color:#6b7280;font-size:.88rem;'>No milestones configured yet.</p>";
+      return;
+    }
+
+    var foundNext = false;
+    var html = "";
+    milestones.forEach(function(m) {
+      var cls = m.achieved ? "achieved" : ((!foundNext) ? "next-up" : "");
+      if (!m.achieved && !foundNext) foundNext = true;
+      var cashHtml = m.cash_alternative > 0
+        ? "<div class='ms-cash'>or " + inr(m.cash_alternative) + " cash</div>" : "";
+      var rightHtml = m.achieved
+        ? "<span class='ms-badge-achieved'>✓ Achieved</span>"
+        : "<span class='ms-pct'>" + m.progress_pct + "% complete</span>";
+      var pct = Math.min(100, parseFloat(m.progress_pct) || 0);
+      html += "<div class='ms-row " + cls + "'>" +
+        "<div class='ms-top'>" +
+          "<div><div class='ms-title'>" + m.pairs_required + " pairs → " + m.reward_label + "</div>" + cashHtml + "</div>" +
+          "<div>" + rightHtml + "</div>" +
+        "</div>" +
+        "<div class='ms-bar-wrap'><div class='ms-bar-fill' style='width:" + pct + "%'></div></div>" +
+        "</div>";
+    });
+    container.innerHTML = html;
+  }
+
+  function loadHistory(reset) {
+    if (reset) {
+      histOffset = 0;
+      histTotal  = 0;
+      var tb = document.getElementById("hist-body");
+      if (tb) tb.innerHTML = "<tr><td colspan='6' style='color:#6b7280;text-align:center;padding:20px;'>Loading…</td></tr>";
+    }
+
+    frappe.call({
+      method: "t2u_platform.api.earnings.get_commission_history",
+      args: { limit: HIST_LIMIT, offset: histOffset },
+      callback: function(r) {
+        if (!r || !r.message) return;
+        var msg = r.message;
+        histTotal = msg.total_count || 0;
+        renderHistoryRows(msg.history || [], reset);
+        histOffset += (msg.history || []).length;
+        var lmBtn = document.getElementById("load-more-btn");
+        var lmWrap = document.getElementById("load-more-wrap");
+        if (histOffset >= histTotal) {
+          if (lmWrap) lmWrap.style.display = "none";
+        } else {
+          if (lmWrap) lmWrap.style.display = "";
+          if (lmBtn)  lmBtn.textContent = "Load More (" + (histTotal - histOffset) + " remaining)";
+        }
+      }
+    });
+  }
+
+  function renderHistoryRows(rows, reset) {
+    var tb = document.getElementById("hist-body");
+    if (!tb) return;
+    if (reset) tb.innerHTML = "";
+
+    if (rows.length === 0 && reset) {
+      tb.innerHTML = "<tr><td colspan='6' style='color:#6b7280;text-align:center;padding:20px;'>No commission history yet.</td></tr>";
+      return;
+    }
+
+    rows.forEach(function(r) {
+      var pillCls = r.status === "Confirmed" ? "pill-green" :
+                    r.status === "Pending"   ? "pill-yellow" : "pill-gray";
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + (r.posting_date || "") + "</td>" +
+        "<td>" + (r.income_type || "") + "</td>" +
+        "<td style='color:#6b7280'>" + (r.source_user || "—") + "</td>" +
+        "<td style='color:#6b7280'>" + (r.package_name || "—") + "</td>" +
+        "<td style='font-weight:700'>" + inr(r.amount) + "</td>" +
+        "<td><span class='pill " + pillCls + "'>" + (r.status || "") + "</span></td>";
+      tb.appendChild(tr);
+    });
+  }
+
+  window.loadMoreHistory = function() {
+    loadHistory(false);
+  };
+
+  window.requestWithdrawal = function() {
+    if (!dashData) return;
+    var wi = dashData.withdrawal_info || {};
+    if (wi.kyc_status !== "Verified") {
+      frappe.msgprint({
+        title: "KYC Required",
+        message: "Complete KYC verification before requesting withdrawal. <a href='/kyc'>Complete KYC →</a>",
+        indicator: "orange"
+      });
+      return;
+    }
+
+    var amtEl = document.getElementById("wd-amount");
+    var amount = parseFloat(amtEl ? amtEl.value : 0) || 0;
+    if (amount <= 0) {
+      frappe.msgprint({ title: "Invalid Amount", message: "Please enter a valid amount greater than zero.", indicator: "red" });
+      return;
+    }
+
+    var avail = (dashData.summary || {}).available_balance || 0;
+    if (amount > avail) {
+      frappe.msgprint({
+        title: "Insufficient Balance",
+        message: "Amount exceeds available balance of " + inr(avail) + ".",
+        indicator: "red"
+      });
+      return;
+    }
+
+    frappe.confirm(
+      "Request withdrawal of " + inr(amount) + " to " + wi.bank_name + " (A/C " + wi.bank_account_number + ")?",
+      function() {
+        frappe.call({
+          method: "t2u_platform.api.earnings.submit_withdrawal",
+          args: { amount: amount },
+          callback: function(r) {
+            if (r && r.message && r.message.status === "success") {
+              frappe.msgprint({
+                title: "Withdrawal Requested",
+                message: "Your withdrawal request has been submitted. Reference ID: " + r.message.withdrawal_id,
+                indicator: "green"
+              });
+              if (amtEl) amtEl.value = "";
+              setTimeout(loadDashboard, 1500);
+            }
+          }
+        });
+      }
+    );
+  };
+
+  window.toggleAdmin = function() {
+    var body = document.getElementById("admin-panel-body");
+    var icon = document.getElementById("admin-toggle-icon");
+    if (!body) return;
+    if (body.classList.contains("open")) {
+      body.classList.remove("open");
+      if (icon) icon.textContent = "▼";
+    } else {
+      body.classList.add("open");
+      if (icon) icon.textContent = "▲";
+    }
+  };
+
+  function loadAdminUsers() {
+    frappe.call({
+      method: "t2u_platform.api.earnings.get_manual_credit_form_data",
+      callback: function(r) {
+        if (!r || !r.message) return;
+        var sel = document.getElementById("admin-user");
+        if (!sel) return;
+        sel.innerHTML = "";
+        r.message.forEach(function(u) {
+          var opt = document.createElement("option");
+          opt.value = u.user;
+          opt.textContent = (u.t2u_user_id ? u.t2u_user_id + " — " : "") + u.full_name;
+          sel.appendChild(opt);
+        });
+      }
+    });
+  }
+
+  window.submitManualCredit = function() {
+    var user       = (document.getElementById("admin-user")        || {}).value || "";
+    var amount     = parseFloat((document.getElementById("admin-amount") || {}).value) || 0;
+    var incomeType = (document.getElementById("admin-income-type") || {}).value || "Manual Credit";
+    var remarks    = (document.getElementById("admin-remarks")     || {}).value || "";
+
+    if (!user)   { frappe.msgprint({ message: "Please select a user.", indicator: "red" }); return; }
+    if (amount <= 0) { frappe.msgprint({ message: "Amount must be greater than zero.", indicator: "red" }); return; }
+
+    frappe.call({
+      method: "t2u_platform.api.earnings.manual_credit_commission",
+      args: { user: user, amount: amount, income_type: incomeType, remarks: remarks },
+      callback: function(r) {
+        if (r && r.message && r.message.status === "success") {
+          frappe.msgprint({ title: "Done", message: "Commission credited successfully.", indicator: "green" });
+          document.getElementById("admin-amount").value  = "";
+          document.getElementById("admin-remarks").value = "";
+          setTimeout(loadDashboard, 1200);
+        }
+      }
+    });
+  };
+
+  frappe.ready(function() {
+    loadDashboard();
+  });
+}());
+</script>
+{% endblock %}
